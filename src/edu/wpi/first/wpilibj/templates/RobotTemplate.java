@@ -6,12 +6,17 @@
 /*----------------------------------------------------------------------------*/
 package edu.wpi.first.wpilibj.templates;
 
+import edu.wpi.first.wpilibj.CANJaguar;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.can.CANTimeoutException;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -29,22 +34,38 @@ public class RobotTemplate extends IterativeRobot
     
     int NOODLE1_CHANNEL = 1;
     int NOODLE2_CHANNEL = 2;
-    int GRABBERMOVER_CHANNEL = 3;
+    int GRABBERMOVER_CHANNEL = 7;
     
-    int UPPERLIMIT_CHANNEL = 1;
-    int LOWERLIMIT_CHANNEL = 2;
+    int UPPERLIMIT_CHANNEL = 6;
+    int LOWERLIMIT_CHANNEL = 7;
     
-    int LEFT_YAXIS = 0;
-    int RIGHT_YAXIS = 1;
-    int ROTATION_AXIS = 2;
+    int LEFT_YAXIS = 2;
+    int RIGHT_YAXIS = 5;
+    int ROTATION_AXIS = 1;
+    int LEFT_TRIGGER = 3;
+    int RIGHT_TRIGGER = 4;
     
-    int BUTTON_UP = 0;
-    int BUTTON_DOWN = 1;
+    int BUTTON_UP = 1;
+    int BUTTON_DOWN = 4;
     
-    Jaguar rearRight;
-    Jaguar rearLeft;
-    Jaguar frontRight;
-    Jaguar frontLeft;
+    int CATAPULT1_CHANNEL = 1;
+    int CATAPULT2_CHANNEL = 2;
+    int CATAPULT3_CHANNEL = 3;
+    int CATAPULT4_CHANNEL = 4;
+    
+    
+    
+    CANJaguar rearRight;
+    CANJaguar rearLeft;
+    CANJaguar frontRight;
+    CANJaguar frontLeft;
+    
+    Talon catapult1;
+    Talon catapult2;
+    Talon catapult3;
+    Talon catapult4;
+    Catapult catapult;
+    
     RobotDrive chassis;
     
     Talon noodle1;
@@ -66,10 +87,17 @@ public class RobotTemplate extends IterativeRobot
     
     public void robotInit()
     {
-        rearRight = new Jaguar(2, REAR_RIGHT_CHANNEL);
-        rearLeft = new Jaguar(2, REAR_LEFT_CHANNEL);
-        frontRight = new Jaguar(2, FRONT_LEFT_CHANNEL);
-        frontLeft = new Jaguar(2, FRONT_RIGHT_CHANNEL);
+        try
+        {
+            rearRight = new CANJaguar(REAR_RIGHT_CHANNEL);
+            rearLeft = new CANJaguar(REAR_LEFT_CHANNEL);
+            frontRight = new CANJaguar(FRONT_LEFT_CHANNEL);
+            frontLeft = new CANJaguar(FRONT_RIGHT_CHANNEL);
+        }
+        catch(CANTimeoutException ex)
+        {
+            System.err.println(ex.getMessage());
+        }
         
         chassis = new RobotDrive(rearLeft, rearRight, frontLeft, frontRight);
         
@@ -81,8 +109,14 @@ public class RobotTemplate extends IterativeRobot
         
         ballGrabber = new BallGrabber(new TwoNoodleRotator(noodle1, noodle2), 
                 new TwoLimitArm(grabberMover, upperLimit, lowerLimit));
+        catapult1 = new Talon(CATAPULT1_CHANNEL);
+        catapult2 = new Talon(CATAPULT2_CHANNEL);
+        catapult3 = new Talon(CATAPULT3_CHANNEL);
+        catapult4 = new Talon(CATAPULT4_CHANNEL);
+        catapult = new Catapult(new VoltageHoop(catapult1, catapult2, catapult3, catapult4));
         
-        xboxController = new Joystick(0);
+        
+        xboxController = new Joystick(1);
     }
 
     /**
@@ -98,7 +132,7 @@ public class RobotTemplate extends IterativeRobot
      */
     public void teleopPeriodic()
     {
-        chassis.arcadeDrive(xboxController.getRawAxis(LEFT_YAXIS), xboxController.getRawAxis(ROTATION_AXIS));
+        chassis.arcadeDrive(-xboxController.getRawAxis(LEFT_YAXIS), -xboxController.getRawAxis(ROTATION_AXIS));
         if(xboxController.getRawButton(BUTTON_UP))
         {
             ballGrabber.grab(1.0);
@@ -107,8 +141,14 @@ public class RobotTemplate extends IterativeRobot
         {
             ballGrabber.grab(-1.0);
         }
-        
+        else
+        {
+            ballGrabber.grab(0);
+        }
         ballGrabber.setPosition(xboxController.getRawAxis(RIGHT_YAXIS));
+        //Right Trigger goes up, Left Trigger goes down
+        catapult.launch(xboxController.getRawAxis(RIGHT_TRIGGER) + -xboxController.getRawAxis(LEFT_TRIGGER));
+    }
     /**
      * This function is called periodically during test mode
      */
